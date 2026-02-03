@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'maven-3.9'
+        jdk 'jdk17'
+    }
+
+    environment {
+        SONAR_HOST_URL = "http://sonarqube-service:9000"
+        SONAR_PROJECT_KEY = "demo-java-app"
+    }
+
+    stages {
+
+        stage('Checkout Source Code') {
+            steps {
+                echo "Checking out source code..."
+                checkout scm
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                echo "Running SonarQube Scan..."
+                sh """
+                mvn clean verify sonar:sonar \
+                -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                -Dsonar.host.url=$SONAR_HOST_URL
+                """
+            }
+        }
+
+        stage('Build Artifact') {
+            steps {
+                echo "Building Application..."
+                sh """
+                mvn clean package
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline executed successfully!"
+        }
+        failure {
+            echo "Pipeline failed!"
+        }
+    }
+}
+
