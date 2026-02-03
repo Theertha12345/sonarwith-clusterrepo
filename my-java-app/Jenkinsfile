@@ -20,26 +20,35 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('Build') {
             steps {
-                echo "Running SonarQube Scan..."
+                echo "Building application..."
                 dir('my-java-app') {
-                    sh '''
-                    mvn clean verify sonar:sonar \
-                    -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                    -Dsonar.host.url=$SONAR_HOST_URL
-                    '''
+                    sh 'mvn clean compile'
                 }
             }
         }
 
-        stage('Build Artifact') {
+        stage('SonarQube Analysis') {
             steps {
-                echo "Building Application..."
+                echo "Running SonarQube Scan..."
                 dir('my-java-app') {
-                    sh '''
-                    mvn clean package
-                    '''
+                    withSonarQubeEnv() {
+                        sh """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                        -Dsonar.host.url=${SONAR_HOST_URL}
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                echo "Packaging application..."
+                dir('my-java-app') {
+                    sh 'mvn clean package'
                 }
             }
         }
@@ -54,5 +63,6 @@ pipeline {
         }
     }
 }
+
 
 
