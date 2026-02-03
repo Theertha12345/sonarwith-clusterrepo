@@ -1,3 +1,5 @@
+
+
 pipeline {
     agent any
 
@@ -7,7 +9,6 @@ pipeline {
     }
 
     environment {
-        SONAR_HOST_URL = "http://172.31.8.128:9000"
         SONAR_PROJECT_KEY = "jenkins-token"
     }
 
@@ -33,11 +34,10 @@ pipeline {
             steps {
                 echo "Running SonarQube Scan..."
                 dir('my-java-app') {
-                    withSonarQubeEnv() {
+                    withSonarQubeEnv('SonarQube-Server') {
                         sh """
                         mvn sonar:sonar \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                        -Dsonar.host.url=${SONAR_HOST_URL}
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY}
                         """
                     }
                 }
@@ -48,7 +48,7 @@ pipeline {
             steps {
                 echo "Packaging application..."
                 dir('my-java-app') {
-                    sh 'mvn clean package'
+                    sh 'mvn package'
                 }
             }
         }
@@ -63,6 +63,3 @@ pipeline {
         }
     }
 }
-
-
-
