@@ -23,20 +23,24 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 echo "Running SonarQube Scan..."
-                sh """
-                mvn clean verify sonar:sonar \
-                -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                -Dsonar.host.url=$SONAR_HOST_URL
-                """
+                dir('my-java-app') {
+                    sh '''
+                    mvn clean verify sonar:sonar \
+                    -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                    -Dsonar.host.url=$SONAR_HOST_URL
+                    '''
+                }
             }
         }
 
         stage('Build Artifact') {
             steps {
                 echo "Building Application..."
-                sh """
-                mvn clean package
-                """
+                dir('my-java-app') {
+                    sh '''
+                    mvn clean package
+                    '''
+                }
             }
         }
     }
@@ -50,4 +54,5 @@ pipeline {
         }
     }
 }
+
 
