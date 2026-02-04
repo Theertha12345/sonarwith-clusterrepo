@@ -1,65 +1,64 @@
-
-
 pipeline {
     agent any
 
     tools {
-        maven 'maven-3.9'
         jdk 'jdk17'
+        maven 'maven3'
     }
 
     environment {
-        SONAR_PROJECT_KEY = "jenkins-token"
+        PROJECT_KEY = "my-java-app"
+        //GROUP_ID    = "com.example"
+       
     }
 
     stages {
 
-        stage('Checkout Source Code') {
+        stage('Checkout') {
             steps {
-                echo "Checking out source code..."
                 checkout scm
             }
         }
 
-        stage('Build') {
+        stage('Build & Package') {
             steps {
-                echo "Building application..."
-                dir('my-java-app') {
-                    sh 'mvn clean compile'
-                }
+                sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('Sonar Analysis') {
             steps {
-                echo "Running SonarQube Scan..."
-                dir('my-java-app') {
-                    withSonarQubeEnv('SonarQube-Server') {
-                        sh """
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY}
-                        """
+                withSonarQubeEnv('SonarQube') {
+                    withCredentials([
+                        string(credentialsId: 'jenkins-token', variable: 'SONAR_TOKEN')
+                    ]) {
+                        sh '''
+                            mvn sonar:sonar \
+                              -Dsonar.projectKey=${PROJECT_KEY} \
+                              -Dsonar.projectName=${PROJECT_KEY} \
+                              -Dsonar.token=$SONAR_TOKEN
+                        '''
                     }
                 }
             }
         }
 
-        stage('Package') {
+        stage('Quality Gate') {
             steps {
-                echo "Packaging application..."
-                dir('my-java-app') {
-                    sh 'mvn package'
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
+
     }
 
     post {
         success {
-            echo "Pipeline executed successfully!"
+            echo "✅ FULL PIPELINE SUCCESSFUL"
         }
         failure {
-            echo "Pipeline failed!"
+            echo "❌ PIPELINE FAILED"
         }
     }
 }
