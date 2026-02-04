@@ -8,7 +8,6 @@ pipeline {
 
     environment {
         PROJECT_KEY = "my-java-app"
-        //GROUP_ID    = "com.example"
        
     }
 
