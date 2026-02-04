@@ -22,12 +22,15 @@ pipeline {
 
         stage('Build & Package') {
             steps {
+                dir('my-java-app'){
                 sh 'mvn clean package -DskipTests'
+            }
             }
         }
 
         stage('Sonar Analysis') {
-            steps {
+            steps { 
+                dir('my-java-app') {
                 withSonarQubeEnv('SonarQube') {
                     withCredentials([
                         string(credentialsId: 'jenkins-token', variable: 'SONAR_TOKEN')
@@ -39,6 +42,7 @@ pipeline {
                               -Dsonar.token=$SONAR_TOKEN
                         '''
                     }
+                }
                 }
             }
         }
