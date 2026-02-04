@@ -31,7 +31,7 @@ pipeline {
         stage('Sonar Analysis') {
             steps { 
                 dir('my-java-app') {
-                withSonarQubeEnv('SonarQube') {
+                withSonarQubeEnv('SonarQube-Server') {
                     withCredentials([
                         string(credentialsId: 'jenkins-token', variable: 'SONAR_TOKEN')
                     ]) {
