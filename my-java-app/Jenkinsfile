@@ -8,10 +8,21 @@ pipeline {
 
     environment {
         PROJECT_KEY = "my-java-app"
-       
+
+        AWS_REGION = "ap-south-1"
+        ECR_REPO = "123456789012.dkr.ecr.ap-south-1.amazonaws.com/myapp"
+
+        NEXUS_URL  = "http://<node-ip>:32081"
+        NEXUS_REPO = "maven-releases"
+
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
+
+        /* =====================
+           CI PART (SAFE)
+           ===================== */
 
         stage('Checkout') {
             steps {
@@ -21,27 +32,27 @@ pipeline {
 
         stage('Build & Package') {
             steps {
-                dir('my-java-app'){
-                sh 'mvn clean package -DskipTests'
-            }
+                dir('my-java-app') {
+                    sh 'mvn clean package -DskipTests'
+                }
             }
         }
 
         stage('Sonar Analysis') {
-            steps { 
+            steps {
                 dir('my-java-app') {
-                withSonarQubeEnv('SonarQube-Server') {
-                    withCredentials([
-                        string(credentialsId: 'jenkins-token', variable: 'SONAR_TOKEN')
-                    ]) {
-                        sh '''
-                            mvn sonar:sonar \
-                              -Dsonar.projectKey=${PROJECT_KEY} \
-                              -Dsonar.projectName=${PROJECT_KEY} \
-                              -Dsonar.token=$SONAR_TOKEN
-                        '''
+                    withSonarQubeEnv('SonarQube-Server') {
+                        withCredentials([
+                            string(credentialsId: 'jenkins-token', variable: 'SONAR_TOKEN')
+                        ]) {
+                            sh '''
+                              mvn sonar:sonar \
+                                -Dsonar.projectKey=${PROJECT_KEY} \
+                                -Dsonar.projectName=${PROJECT_KEY} \
+                                -Dsonar.token=$SONAR_TOKEN
+                            '''
+                        }
                     }
-                }
                 }
             }
         }
@@ -54,14 +65,72 @@ pipeline {
             }
         }
 
+        /* =====================
+           CD PART (RUNS ONLY IF QG PASSES)
+           ===================== */
+
+        stage('Upload Artifact to Nexus') {
+            steps {
+                dir('my-java-app') {
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'nexus-creds',
+                            usernameVariable: 'NEXUS_USER',
+                            passwordVariable: 'NEXUS_PASS'
+                        )
+                    ]) {
+                        sh """
+                        curl -u $NEXUS_USER:$NEXUS_PASS \
+                        --upload-file target/*.jar \
+                        $NEXUS_URL/repository/$NEXUS_REPO/my-java-app-${BUILD_NUMBER}.jar
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image (Pull from Nexus)') {
+            steps {
+                sh """
+                curl -o app.jar \
+                $NEXUS_URL/repository/$NEXUS_REPO/my-java-app-${BUILD_NUMBER}.jar
+
+                docker build -t myapp:${IMAGE_TAG} .
+                """
+            }
+        }
+
+        stage('Login to AWS ECR') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-creds']
+                ]) {
+                    sh """
+                    aws ecr get-login-password --region $AWS_REGION \
+                    | docker login --username AWS --password-stdin $ECR_REPO
+                    """
+                }
+            }
+        }
+
+        stage('Push Image to ECR') {
+            steps {
+                sh """
+                docker tag myapp:${IMAGE_TAG} $ECR_REPO:${IMAGE_TAG}
+                docker push $ECR_REPO:${IMAGE_TAG}
+                """
+            }
+        }
     }
 
     post {
         success {
-            echo "✅ FULL PIPELINE SUCCESSFUL"
+            echo "✅ CI + CD PIPELINE SUCCESSFUL"
         }
         failure {
             echo "❌ PIPELINE FAILED"
         }
     }
 }
+
