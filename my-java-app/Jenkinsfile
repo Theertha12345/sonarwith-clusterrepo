@@ -9,8 +9,8 @@ pipeline {
     environment {
         PROJECT_KEY = "my-java-app"
 
-        AWS_REGION = "ap-south-1"
-        ECR_REPO = "123456789012.dkr.ecr.ap-south-1.amazonaws.com/myapp"
+        AWS_REGION = "ap-south-2"
+        ECR_REPO = "692614315837.dkr.ecr.ap-south-2.amazonaws.com/myrepo"
 
         NEXUS_URL  = "http://<node-ip>:32081"
         NEXUS_REPO = "maven-releases"
