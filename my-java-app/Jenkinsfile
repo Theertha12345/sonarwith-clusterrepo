@@ -12,8 +12,8 @@ pipeline {
         AWS_REGION = "ap-south-2"
         ECR_REPO = "692614315837.dkr.ecr.ap-south-2.amazonaws.com/myrepo"
 
-        NEXUS_URL  = "http://<node-ip>:32081"
-        NEXUS_REPO = "maven-releases"
+        NEXUS_URL  = "http://18.61.211.143:32081"
+        NEXUS_REPO = "http://18.61.211.143:32081/repository/maven-releases/"
 
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
