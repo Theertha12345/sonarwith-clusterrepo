@@ -24,7 +24,7 @@
     <distributionManagement>
         <repository>
             <id>nexus</id>
-            <url>http://18.60.233.27:32081/repository/maven-newreleases/</url>
+            <url>http://172.31.4.228:32081/repository/maven-newreleases/</url>
         </repository>
     </distributionManagement>
 
