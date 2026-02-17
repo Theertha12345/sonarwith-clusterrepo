@@ -48,7 +48,7 @@ pipeline {
              dir('my-java-app') {
                  withMaven(
                     maven: 'maven-3.9',
-                    mavenSettingsConfig: 'nexus-maven-settings'
+                    mavenSettingsConfig: '44078b5b-9b6a-4b82-bc08-f9b17fc41e1f'
                     ) {
                          sh 'mvn clean deploy -DskipTests'
             }
