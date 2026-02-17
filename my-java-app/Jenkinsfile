@@ -15,8 +15,7 @@ pipeline {
         NEXUS_URL  = "http://172.31.4.228:32081"
         NEXUS_REPO = "maven-newreleases"
 
-        IMAGE_TAG  = "${BUILD_NUMBER}"
-        ARTIFACT   = "my-java-app-${BUILD_NUMBER}.jar"
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -35,10 +34,10 @@ pipeline {
                             string(credentialsId: 'jenkins-token', variable: 'SONAR_TOKEN')
                         ]) {
                             sh '''
-                              mvn clean verify sonar:sonar \
-                                -Dsonar.projectKey=${PROJECT_KEY} \
-                                -Dsonar.projectName=${PROJECT_KEY} \
-                                -Dsonar.token=$SONAR_TOKEN
+                            mvn clean verify sonar:sonar \
+                            -Dsonar.projectKey=${PROJECT_KEY} \
+                            -Dsonar.projectName=${PROJECT_KEY} \
+                            -Dsonar.token=$SONAR_TOKEN
                             '''
                         }
                     }
@@ -49,48 +48,49 @@ pipeline {
         stage('Build & Package') {
             steps {
                 dir('my-java-app') {
-                    sh '''
-                      mvn clean package -DskipTests
-                      cp target/*.jar ../${ARTIFACT}
-                    '''
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
 
         stage('Upload Artifact to Nexus') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'nexus-creds',
-                        usernameVariable: 'NEXUS_USER',
-                        passwordVariable: 'NEXUS_PASS'
-                    )
-                ]) {
-                    sh """
-                    curl -u $NEXUS_USER:$NEXUS_PASS \
-                    --upload-file ${ARTIFACT} \
-                    $NEXUS_URL/repository/$NEXUS_REPO/${ARTIFACT}
-                    """
+                dir('my-java-app') {
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'nexus-creds',
+                            usernameVariable: 'NEXUS_USER',
+                            passwordVariable: 'NEXUS_PASS'
+                        )
+                    ]) {
+                        sh '''
+                        curl -u "$NEXUS_USER:$NEXUS_PASS" \
+                        --upload-file target/*.jar \
+                        $NEXUS_URL/repository/$NEXUS_REPO/my-java-app-${BUILD_NUMBER}.jar
+                        '''
+                    }
                 }
             }
         }
 
-        stage('Build Docker Image (Pull from Nexus)') {
+        stage('Build Docker Image') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'nexus-creds',
-                        usernameVariable: 'NEXUS_USER',
-                        passwordVariable: 'NEXUS_PASS'
-                    )
-                ]) {
-                    sh """
-                    curl -u $NEXUS_USER:$NEXUS_PASS \
-                    -o app.jar \
-                    $NEXUS_URL/repository/$NEXUS_REPO/${ARTIFACT}
+                dir('my-java-app') {
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'nexus-creds',
+                            usernameVariable: 'NEXUS_USER',
+                            passwordVariable: 'NEXUS_PASS'
+                        )
+                    ]) {
+                        sh '''
+                        curl -u "$NEXUS_USER:$NEXUS_PASS" \
+                        -o app.jar \
+                        $NEXUS_URL/repository/$NEXUS_REPO/my-java-app-${BUILD_NUMBER}.jar
 
-                    docker build -t myapp:${IMAGE_TAG} .
-                    """
+                        docker build -t myapp:${IMAGE_TAG} .
+                        '''
+                    }
                 }
             }
         }
@@ -101,20 +101,20 @@ pipeline {
                     [$class: 'AmazonWebServicesCredentialsBinding',
                      credentialsId: 'aws-creds']
                 ]) {
-                    sh """
+                    sh '''
                     aws ecr get-login-password --region $AWS_REGION \
                     | docker login --username AWS --password-stdin $ECR_REPO
-                    """
+                    '''
                 }
             }
         }
 
         stage('Push Image to ECR') {
             steps {
-                sh """
+                sh '''
                 docker tag myapp:${IMAGE_TAG} $ECR_REPO:${IMAGE_TAG}
                 docker push $ECR_REPO:${IMAGE_TAG}
-                """
+                '''
             }
         }
     }
@@ -126,9 +126,5 @@ pipeline {
         failure {
             echo "❌ PIPELINE FAILED"
         }
-        always {
-            sh 'docker system prune -f || true'
-        }
     }
 }
-
