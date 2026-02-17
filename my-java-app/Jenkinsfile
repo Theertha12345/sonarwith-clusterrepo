@@ -13,9 +13,7 @@ pipeline {
         ECR_REPO   = "692614315837.dkr.ecr.ap-south-2.amazonaws.com/myrepo"
 
         NEXUS_URL  = "http://172.31.4.228:32081"
-        NEXUS_REPO = "maven-newreleases"
-
-        IMAGE_TAG = "${BUILD_NUMBER}"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -35,9 +33,9 @@ pipeline {
                         ]) {
                             sh '''
                             mvn clean verify sonar:sonar \
-                            -Dsonar.projectKey=${PROJECT_KEY} \
-                            -Dsonar.projectName=${PROJECT_KEY} \
-                            -Dsonar.token=$SONAR_TOKEN
+                              -Dsonar.projectKey=${PROJECT_KEY} \
+                              -Dsonar.projectName=${PROJECT_KEY} \
+                              -Dsonar.token=$SONAR_TOKEN
                             '''
                         }
                     }
@@ -45,86 +43,5 @@ pipeline {
             }
         }
 
-        stage('Build & Package') {
+        stage('Build & Deploy to Nexus') {
             steps {
-                dir('my-java-app') {
-                    sh 'mvn clean package -DskipTests'
-                }
-            }
-        }
-
-        stage('Upload Artifact to Nexus') {
-            steps {
-                dir('my-java-app') {
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: 'nexus-creds',
-                            usernameVariable: 'NEXUS_USER',
-                            passwordVariable: 'NEXUS_PASS'
-                        )
-                    ]) {
-                        sh '''
-                        curl -u "$NEXUS_USER:$NEXUS_PASS" \
-                        --upload-file target/*.jar \
-                        $NEXUS_URL/repository/$NEXUS_REPO/my-java-app-${BUILD_NUMBER}.jar
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                dir('my-java-app') {
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: 'nexus-creds',
-                            usernameVariable: 'NEXUS_USER',
-                            passwordVariable: 'NEXUS_PASS'
-                        )
-                    ]) {
-                        sh '''
-                        curl -u "$NEXUS_USER:$NEXUS_PASS" \
-                        -o app.jar \
-                        $NEXUS_URL/repository/$NEXUS_REPO/my-java-app-${BUILD_NUMBER}.jar
-
-                        docker build -t myapp:${IMAGE_TAG} .
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('Login to AWS ECR') {
-            steps {
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'aws-creds']
-                ]) {
-                    sh '''
-                    aws ecr get-login-password --region $AWS_REGION \
-                    | docker login --username AWS --password-stdin $ECR_REPO
-                    '''
-                }
-            }
-        }
-
-        stage('Push Image to ECR') {
-            steps {
-                sh '''
-                docker tag myapp:${IMAGE_TAG} $ECR_REPO:${IMAGE_TAG}
-                docker push $ECR_REPO:${IMAGE_TAG}
-                '''
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ CI + CD PIPELINE SUCCESSFUL"
-        }
-        failure {
-            echo "❌ PIPELINE FAILED"
-        }
-    }
-}
