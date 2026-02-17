@@ -13,7 +13,7 @@ pipeline {
         ECR_REPO = "692614315837.dkr.ecr.ap-south-2.amazonaws.com/myrepo"
 
         NEXUS_URL  = "http://172.31.4.228:32081"
-        NEXUS_REPO = "http://172.31.4.228:32081/repository/maven-releases/"
+        NEXUS_REPO = "maven-newreleases"
 
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
